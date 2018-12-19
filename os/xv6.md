@@ -30,7 +30,7 @@ address on a small machine. The reason it places the kernel at 0x100000 rather t
 
 
 
-![](![img](https://user-images.githubusercontent.com/1244560/49553580-5c2e8100-f933-11e8-80ae-dcb9a4644f97.jpg))
+![](![img](https://user-images.githubusercontent.com/1244560/49553580-5c2e8100-f933-11e8-80ae-dcb9a4644f97.jpg)
 
 
 
