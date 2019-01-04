@@ -34,7 +34,10 @@ mpstat -P ALL 1
 #### B.1.1 What
 进程性能分析工具，用来实时查看进程的 CPU、内存、I/O 以及上下文切换等性能指标。
 
-#### B.1.2 常用 1line
+#### B.1.2 重要参数
+* -t: 统计中包含进程所有的线程，不加此参数时，有时会只统计进程本身的统计量，包含的线程没有涵盖。
+
+#### B.1.3 常用 1line
 
 ```
 pidstat -u 5 1  
@@ -48,8 +51,27 @@ pidstat -u 5 1
 11:00:35 PM 403582    183152    8.51    0.40    0.00    8.91    73  java
 ```
 
+```
+sudo pidstat -r   -p <pid> 1
+# Report page faults and memory utilization.
+# 间隔1秒输出一次
 
+03:34:19 PM   UID       PID  minflt/s  majflt/s     VSZ    RSS   %MEM  Command
+03:34:24 PM  2916    120985      0.20      0.00 277215708 4152188   0.79  mysqld
+03:34:29 PM  2916    120985      0.20      0.00 277215708 4152188   0.79  mysqld
+03:34:34 PM  2916    120985      0.20      0.00 277215708 4152188   0.79  mysqld
+```
 
+```
+sudo pidstat -d  -p <pid> 1
+# Report I/O statistics (kernels 2.6.20 and later only).
+
+03:37:14 PM   UID       PID   kB_rd/s   kB_wr/s kB_ccwr/s  Command
+03:37:15 PM  2916    120985      0.00      0.00      0.00  mysqld
+03:37:16 PM  2916    120985      0.00      0.00      0.00  mysqld
+03:37:17 PM  2916    120985      0.00      0.00      0.00  mysqld
+03:37:18 PM  2916    120985      0.00      0.00      0.00  mysqld
+```
 
 
 
