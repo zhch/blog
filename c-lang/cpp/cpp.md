@@ -93,8 +93,6 @@ vector<double> v = {1, 2, 3.14};
 
 - const: indicating that it may not modify its object 
 
-
-
 ### 4.1  [[...]] Attributes
 A construct [[...]] is called an attribute and can be placed just about anywhere in the C++ syntax.
 In general, an attribute specifies some implementation-dependent property about the syntactic
@@ -112,6 +110,22 @@ Club::Club(const string& n, Date fd)
 	// ...
 }
 ```
+
+### 4.3 deleted Functions
+
+We can ‘‘delete’’ a function; that is, we can state that a function does not exist so that it is an error to try to use it (implicitly or explicitly). The most obvious use is to eliminate otherwise defaulted functions. 例子：
+
+```c++
+class Base {
+	// ...
+	Base& operator=(const Base&) = delete;// disallow copying
+	Base(const Base&) = delete;
+	Base& operator=(Base&&) = delete; // disallow moving
+	Base(Base&&) = delete;
+};
+```
+
+
 
 
 
@@ -436,26 +450,6 @@ inline bool operator==(Date a, Date b) // equality
 {
 	return a.day()==b.day() && a.month()==b.month() && a.year()==b.year();
 }
-```
-
-
-
-
-
-### deleted Functions
-
-We can ‘‘delete’’ a function; that is, we can state that a function does not exist so that it is an error
-to try to use it (implicitly or explicitly). The most obvious use is to eliminate otherwise defaulted
-functions. 例子：
-
-```c++
-class Base {
-	// ...
-	Base& operator=(const Base&) = delete;// disallow copying
-	Base(const Base&) = delete;
-	Base& operator=(Base&&) = delete; // disallow moving
-	Base(Base&&) = delete;
-};
 ```
 
 
