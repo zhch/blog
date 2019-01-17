@@ -37,6 +37,7 @@
 |                |                                                              |                                                              |
 
 
+
 ## 3 mp
 
 | CATEGORY         | FIELD/FUNCTION                                   | 作用                                                         |
@@ -52,7 +53,36 @@
 
 
 
-## 4 proc
+## 4 spinlock
+
+最基础的同步机制
+
+| CATEGORY        | FIELD/FUNCTION                            | 作用                              |
+| --------------- | ----------------------------------------- | --------------------------------- |
+| PUBLIC FUNCTION | initlock(struct spinlock *lk, char *name) | 初始化spinlock结构                |
+| PUBLIC FUNCTION | acquire(struct spinlock *lk)              | 加锁spinlock                      |
+| PUBLIC FUNCTION | release(struct spinlock *lk)              | 释放spinlock                      |
+| PUBLIC FUNCTION | getcallerpcs(void *v, uint pcs[])         | ?                                 |
+| PUBLIC FUNCTION | int  holding(struct spinlock *lock)       | 判断当前CPU是否持有给定的spinlock |
+| PUBLIC FUNCTION | pushcli(void)和popcli(void)               | 可重入的关闭、打开中断            |
+
+
+
+## 5 sleeplock
+
+基于spinlock实现。
+
+| CATEGORY        | FIELD/FUNCTION                                  | 作用                                                         |
+| --------------- | ----------------------------------------------- | ------------------------------------------------------------ |
+| PUBLIC FUNCTION | initsleeplock(struct sleeplock *lk, char *name) | 初始化一个sleeplock                                          |
+| PUBLIC FUNCTION | acquiresleep(struct sleeplock *lk)              | 获取一个sleeplock。和spinlock相比，sleeplock在等待锁时可以释放当前CPU，让别的线程可以在上面执行。加锁后中断保持打开，因此不能用在interrupt handler中 |
+| PUBLIC FUNCTION | releasesleep(struct sleeplock *lk)              | 释放一个sleeplock                                            |
+|                 |                                                 |                                                              |
+|                 |                                                 |                                                              |
+
+
+
+## 6 proc
 
 | CATEGORY         | TYPE/FIELD/FUNCTION                    | 作用                                                         |
 | ---------------- | -------------------------------------- | ------------------------------------------------------------ |
@@ -82,7 +112,7 @@
 
 
 
-## 5 swtch 
+## 7 swtch 
 
 | CATEGORY       | FIELD/FUNCTION                                        | 作用                                                         |
 | -------------- | ----------------------------------------------------- | ------------------------------------------------------------ |
@@ -92,7 +122,155 @@
 
 
 
-## pipe
+## 8 picirq
+
+禁用PIC，xv6使用APIC
+
+
+
+
+## 9 lapic
+
+| CATEGORY        | TYPE/FIELD/FUNCTION  | 作用                                                       |
+| --------------- | -------------------- | ---------------------------------------------------------- |
+| FIELD           | volatile uint *lapic | local APIC 寄存器Map到的内存地址，每一个逻辑核该地址都相同 |
+| --              | --                   | --                                                         |
+| PUBLIC FUNCTION | int lapicid(void)    | 通过读取 local APIC 寄存器获取当前正在执行CPU ID           |
+| PUBLIC FUNCTION | void seginit(void)   | ?                                                          |
+| PUBLIC FUNCTION | void  lapiceoi(void) | 发送EOI:Acknowledge interrupt.                             |
+|                 |                      |                                                            |
+|                 |                      |                                                            |
+
+
+
+## 10 ioapic
+
+| CATEGORY         | TYPE/FIELD/FUNCTION                    | 作用                                                         |
+| ---------------- | -------------------------------------- | ------------------------------------------------------------ |
+| PRIVATE FUNCTION | uint ioapicread(int reg)               | 读取IOAPIC寄存器中的数据                                     |
+| PRIVATE FUNCTION | ioapicwrite(int reg, uint data)        | 把data写入IOAPIC寄存器                                       |
+| --               | --                                     | --                                                           |
+| PUBLIC FUNCTION  | void ioapicinit(void)                  | 初始化ioapic，初始状态：Mark all interrupts edge-triggered, active high, disabled, and not routed to any CPUs |
+| PUBLIC FUNCTION  | void ioapicenable(int irq, int cpunum) | Mark interrupt edge-triggered, active high, enabled, and routed to the given cpunum |
+
+
+
+## 11 trap
+
+| CATEGORY        | FIELD/FUNCTION             | 作用                                                     |
+| --------------- | -------------------------- | -------------------------------------------------------- |
+| FIELD           | vectors                    | 由vectors.pl生成，几号中断就由vectors[i]中断处理程序处理 |
+| PUBLIC FUNCTION | tvinit(void)               | 初始化中断处理向量                                       |
+| PUBLIC FUNCTION | idtinit(void)              | 把中断处理向量载入idt寄存器                              |
+| PUBLIC FUNCTION | trap(struct trapframe *tf) | Trap处理总入口                                           |
+|                 |                            |                                                          |
+
+
+
+## 12 ide
+
+| CATEGORY         | TYPE/FIELD/FUNCTION          | 作用                                                         |
+| ---------------- | ---------------------------- | ------------------------------------------------------------ |
+| PUBLIC FUNCTION  | void ideintr(void)           | ide设备中断处理。中断一定是意味着请求队列的第一个请求执行完成：1） 通过port io完成相关读写；2） 请求队列第一个请求出队列；3） 向ide设备发起请求队列中的下一个请求（调用idestart） |
+| PUBLIC FUNCTION  | void  iderw(struct buf *b)   | 1） 把struct buf加入到请求队列末尾；2） 如果这个新加入的请求已经是请求头了，则直接向ide设备发起请求（调用idestart）；3） sleep等待请求完成 |
+| --               | --                           | --                                                           |
+| PRIVATE FUNCTION | void idestart(struct buf *b) | 向ide设备发起请求,请求响应通过中断处理（ideintr）            |
+
+
+
+## 13 bio
+
+| CATEGORY         | TYPE/FIELD/FUNCTION                       | 作用                                                         |
+| ---------------- | ----------------------------------------- | ------------------------------------------------------------ |
+| FIELD            | bcache.buf                                | 所有的buffer cache块集合                                     |
+| FIELD            | bcache.head                               | buffer cache块LRU队列，the first buffer in the list is the most recently used, and the last is the least recently used. The two loops in bget take advantage of this: the scan for an existing buffer must process the entire list in the worst case, but checking the most recently used buffers first (starting at bcache.head and following next pointers) will reduce scan time when there is good locality of reference. The scan to pick a buffer to reuse picks the least recently used buffer by scanning backward (following prev pointers). |
+| --               | --                                        | --                                                           |
+| PUBLIC  FUNCTION | binit(void)                               | 初始化bio（buffer cache）模块                                |
+| PUBLIC  FUNCTION | struct buf* bread(uint dev, uint blockno) | 根据给定的设备号和块号返回一块：现在buffer cache中查找，若找到直接返回，若没有找到则通过调用ide接口从磁盘中读取，放入buffer cache，并返回。Once bread has read the disk (if needed) and returned the buffer to its caller, the caller has exclusive use of the buffer and can read or write the data bytes. If the caller does modify the buffer, it must call bwrite to write the changed data to disk beforereleasing the buffer. |
+| PUBLIC  FUNCTION | void bwrite(struct buf *b)                | 把给定的块写入到磁盘                                         |
+| PUBLIC  FUNCTION | brelse(struct buf *b)                     | 访问完一块后释放上面的锁，并将其移动到Most Recently Used队首 |
+| --               | --                                        | --                                                           |
+| PRIVATE FUNCTION | struct buf*bget(uint dev, uint blockno)   | 根据给定的设备号和块号在buffer cache中查找，如果不在buffer cache中则分配一块buffer cache空间用于存放。If all the buffers are busy, then too many processes are simultaneously executing file system calls; bget panics. A more graceful response might be to sleep until buffer became free, though there would then be a possibility of deadlock. |
+|                  |                                           |                                                              |
+|                  |                                           |                                                              |
+
+
+
+## 14 log
+
+| CATEGORY         | TYPE/FIELD/FUNCTION      | 作用                                                         |
+| ---------------- | ------------------------ | ------------------------------------------------------------ |
+| PUBLIC FUNCTION  | initlog(int dev)         | 初始化log模块，读取super block，获取log存储offset，并从存储的日志恢复 |
+| PUBLIC FUNCTION  | begin_op(void)           | 在每一个文件系统模块系统调用开始前调用：waits until the logging system is not currently committing, and until there is enough unreserved log space to hold the writes from this call. |
+| PUBLIC FUNCTION  | end_op(void)             | called at the end of each FS system call: decrements the count of outstanding system calls. If the count is now zero, it commits the current transaction by calling commit(). |
+| PUBLIC FUNCTION  | log_write(struct buf *b) | 把块写入日志，对块的写操作不直接访问bio层，而是通过log_write。这边接口不保持对称，通常的操作模式是通过bread()读取数据块，如果需要修改，通过log模块进行写入。实际的落盘操作在end_op()中执行，期间的多个块的写入被包装成一个“事务”。 |
+| --               | --                       | --                                                           |
+| PRIVATE FUNCTION | write_log(void)          | 把日志队列中所有修改过的块依次从bio层的cache中读取出来（log队列中只记录块号），调用bwrite写入磁盘log区域 |
+| PRIVATE FUNCTION | install_trans(void)      | 把日志区中的数据块依次读取出来，写入实际位置                 |
+| PRIVATE FUNCTION | write_head(void)         | 写入日志头，包含字段：日志中总块数，和每个块号。This is the true point at which the current transaction commits. |
+| PRIVATE FUNCTION | void commit()            | 分几步：1）调用write_log()把数据落盘到日志区；2）调用write_head()这一步是原子的，到此当前transaction commit成功；3)调用install_trans()把日志区中的数据写入到真正磁盘位置；4)把日志头中的长度字段置位0，再次复写日志头，至此日志清理成功 |
+| PRIVATE FUNCTION | read_head(void)          | 读取日志头                                                   |
+| PRIVATE FUNCTION | recover_from_log(void)   | 从日志中恢复：读取日志头，如果长度不为0，认为有已commit但是没有install的数据，调用install_trans()进行install，最后把日志头长度置位0并复写日志头（清理日志） |
+
+
+
+## 15 fs
+
+| CATEGORY         | TYPE/FIELD/FUNCTION                                          | 作用                                                         |
+| ---------------- | ------------------------------------------------------------ | ------------------------------------------------------------ |
+| TYPE             | struct dinode                                                | 表示一个存储在磁盘上的inode, An inode describes a single unnamed file. |
+| TYPE             | struct inode                                                 | 内存中管理inode所需的结构，重要字段：1) int ref：counts the number of C pointers referring to the in-memory inode, and the kernel discards the inode from memory if the reference count drops to zero.;2)short nlink: (on disk and copied in memory if it is cached) that counts the number of directory entries that refer to a file; xv6 won’t free an inode if its link count is greater than zero. |
+| TYPE             | struct dirent                                                | 表示一个目录项。目录（Directory）被实现为一种特殊的文件，inode类型为T_DIR，磁盘上的inode中存储的是struct dirent数组，包含两个字段：name和对应的inode号 |
+|                  |                                                              |                                                              |
+| --               | --                                                           | --                                                           |
+| FIELD            | icache                                                       | The kernel keeps the set of active inodes in memory          |
+|                  |                                                              |                                                              |
+| --               | --                                                           | --                                                           |
+| PUBLIC FUNCTION  | ilock(struct inode *ip)                                      | 加锁指定的inode，如果inode对应的磁盘数据还没有读取，则在此时读取 |
+| PUBLIC FUNCTION  | iunlock(struct inode *ip)                                    | 解锁指定的inode                                              |
+| PUBLIC FUNCTION  | iupdate(struct inode *ip)                                    | 把修改过的inode写入磁盘。inode任何字段修改后都必须调用本方法。 |
+| PUBLIC FUNCTION  | iunlockput(struct inode *ip)                                 | iunlock+iput                                                 |
+| PUBLIC FUNCTION  | struct inode* ialloc(uint dev, short type)                   | 遍历磁盘上的inode区，寻找空闲的inode，并通过调用iget返回。Mark it as allocated by  giving it type type. Returns an unlocked but allocated and referenced inode. |
+| PUBLIC FUNCTION  | struct inode*dirlookup(struct inode *dp, char *name, uint *poff) | 在给定的目录中搜索给定名字的文件或目录，返回其对应的inode    |
+| PUBLIC FUNCTION  | dirlink(struct inode *dp, char *name, uint inum)             | 把给定的文件或目录（由name和inode号定义）加入到给定的目录中  |
+| PUBLIC FUNCTION  | int readi(struct inode *ip, char *dst, uint off, uint n)     | 读取inode所指向文件的off偏移量处，n字节长度数据到dst         |
+| PUBLIC FUNCTION  | int writei(struct inode *ip, char *src, uint off, uint n)    | 把src处开始，n字节数据写入到给定inode所指向文件的off偏移量处。如果写入位置超出文件总长度，则对文件长度进行扩展 |
+| PUBLIC FUNCTION  | stati(struct inode *ip, struct stat *st)                     | 从inode中读取元数据                                          |
+| PUBLIC FUNCTION  | inode*namei(char *path)                                      | 根据path查找对应的inode                                      |
+| PUBLIC FUNCTION  | struct inode* nameiparent(char *path, char *name)            | 查找整个path的最后一级目录对应的inode                        |
+| --               | --                                                           | --                                                           |
+| PRIVATE FUNCTION | balloc(uint dev)                                             | 读取空闲块位图，查找空闲的块返回                             |
+| PRIVATE FUNCTION | bfree(int dev, uint b)                                       | 释放使用的磁盘块                                             |
+| PRIVATE FUNCTION | uint bmap(struct inode *ip, uint bn)                         | Return the disk block address of the nth block in inode ip. If there is no such block, allocates one.If the block number exceeds NDIRECT+NINDIRECT, bmap panics; writei contains the check that prevents this from happening. |
+| PRIVATE FUNCTION | struct inode iget(uint dev, uint inum)                       | 根据设备号和inode号查找一个inode，如果已经在icache中直接返回，否则分配一个空的inode（不从磁盘中读取实际的inode字段）返回 |
+| PRIVATE FUNCTION | iput(struct inode *ip)                                       | Drop a reference to an in-memory inode. If that was the last reference, the inode cache entry can be recycled. If that was the last reference and the inode has no links to it, free the inode (and its content) on disk. All calls to iput() must be inside a transaction in case it has to free the inode. |
+| PRIVATE FUNCTION | itrunc(struct inode *ip)                                     | truncate the file to zero bytes, freeing the data blocks; sets the inode type to 0 (unallocated); and writes the inode to disk |
+| PRIVATE FUNCTION | char* skipelem(char *path, char *name)                       | 跳过一个path element，输入一个path，把path中的下一个element拷贝到name中，返回值是指向下一个path element开头的指针。如果返回值是0，则path中的element已经遍历完毕 |
+| PRIVATE FUNCTION | inode*namex(char *path, int nameiparent, char *name)         | 根据path查找对应的inode，If parent != 0, return the inode for the parent and copy the final path element into name |
+
+
+
+## 16 file
+
+| CATEGORY        | TYPE/FIELD/FUNCTION                              | 作用                                                        |
+| --------------- | ------------------------------------------------ | ----------------------------------------------------------- |
+| TYPE            | struct devsw                                     | 包含两个函数指针read和write，用于不同设备注册不同的读写函数 |
+| TYPE            | struct file                                      | 封装一个打开的文件                                          |
+| --              | --                                               | --                                                          |
+| FIELD           | struct devsw devsw[]                             | 每个设备注册一个struct devsw，也就是读写函数                |
+| FIELD           | ftable                                           | 管理全局所有打开的文件                                      |
+| --              | --                                               | --                                                          |
+| PUBLIC FUNCTION | fileinit(void)                                   | 初始化file模块                                              |
+| PUBLIC FUNCTION | struct file* filealloc(void)                     | 分配一个可用的struct file结构                               |
+| PUBLIC FUNCTION | struct file* filedup(struct file *f)             | Increment ref count for file f                              |
+| PUBLIC FUNCTION | fileclose(struct file *f)                        | Decrement ref count, close when reaches 0.                  |
+| PUBLIC FUNCTION | filestat(struct file *f, struct stat *st)        | 从文件的inode中读取相关元信息                               |
+| PUBLIC FUNCTION | int fileread(struct file *f, char *addr, int n)  | 从打开的文件中读取数据（调用inode层接口）                   |
+| PUBLIC FUNCTION | int filewrite(struct file *f, char *addr, int n) | 向打开的文件中写入数据                                      |
+
+
+
+## 17 pipe
 
 | 函数                                              | 作用                                            |
 | ------------------------------------------------- | ----------------------------------------------- |
@@ -103,63 +281,6 @@
 |                                                   |                                                 |
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-## 6 spinlock
-最基础的同步机制
-
-| CATEGORY        | FIELD/FUNCTION                            | 作用                              |
-| --------------- | ----------------------------------------- | --------------------------------- |
-| PUBLIC FUNCTION | initlock(struct spinlock *lk, char *name) | 初始化spinlock结构                |
-| PUBLIC FUNCTION | acquire(struct spinlock *lk)              | 加锁spinlock                      |
-| PUBLIC FUNCTION | release(struct spinlock *lk)              | 释放spinlock                      |
-| PUBLIC FUNCTION | getcallerpcs(void *v, uint pcs[])         | ?                                 |
-| PUBLIC FUNCTION | int  holding(struct spinlock *lock)       | 判断当前CPU是否持有给定的spinlock |
-| PUBLIC FUNCTION | pushcli(void)和popcli(void)               | 可重入的关闭、打开中断            |
-
-
-
-
-
-## 7 sleeplock
-基于spinlock实现。
-
-| CATEGORY        | FIELD/FUNCTION                                  | 作用                                                         |
-| --------------- | ----------------------------------------------- | ------------------------------------------------------------ |
-| PUBLIC FUNCTION | initsleeplock(struct sleeplock *lk, char *name) | 初始化一个sleeplock                                          |
-| PUBLIC FUNCTION | acquiresleep(struct sleeplock *lk)              | 获取一个sleeplock。和spinlock相比，sleeplock在等待锁时可以释放当前CPU，让别的线程可以在上面执行。加锁后中断保持打开，因此不能用在interrupt handler中 |
-| PUBLIC FUNCTION | releasesleep(struct sleeplock *lk)              | 释放一个sleeplock                                            |
-|                 |                                                 |                                                              |
-|                 |                                                 |                                                              |
-
-
-
-
-
-## trap
-
-| CATEGORY        | FIELD/FUNCTION             | 作用                                                     |
-| --------------- | -------------------------- | -------------------------------------------------------- |
-| FIELD           | vectors                    | 由vectors.pl生成，几号中断就由vectors[i]中断处理程序处理 |
-| PUBLIC FUNCTION | tvinit(void)               | 初始化中断处理向量                                       |
-| PUBLIC FUNCTION | idtinit(void)              | 把中断处理向量载入idt寄存器                              |
-| PUBLIC FUNCTION | trap(struct trapframe *tf) | Trap处理总入口                                           |
-|                 |                            |                                                          |
 
 
 
