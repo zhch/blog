@@ -203,8 +203,6 @@ class X {
 	X(); //default constructor
 	X(const X&); // copy constr uctor
 	X(X&&); //move constr uctor
-	X& operator=(const X&); // copy assignment: clean up target and copy
-	X& operator=(X&&); // move assignment: clean up target and move
 	˜X(); //destructor: clean up
 	// ...
 };
@@ -342,10 +340,15 @@ enum class Traffic_light { red, yellow, green };
 
 ### Named casts
 
-- static_cast converts between related types such as one pointer type to another in the same class hierarchy, an integral type to an enumeration, or a floating-point type to an integral type. It also does conversions defined by constructors and conversion operators.
-- reinterpret_cast handles conversions between unrelated types such as an integer to a pointer or a pointer to an unrelated pointer type
-- const_cast converts between types that differ only in const and volatile qualifiers
+- static_cast: converts between related types such as one pointer type to another in the same class hierarchy, an integral type to an enumeration, or a floating-point type to an integral type. It also does conversions defined by constructors and conversion operators. `static_cast` performs no runtime checks. This should be used if you know that you refer to an object of a specific type, and thus a check would be unnecessary. 
+
 - dynamic_cast does run-time checked conversion of pointers and references into a class hierarchy
+
+- reinterpret_cast handles conversions between unrelated types such as an integer to a pointer or a pointer to an unrelated pointer type. It is used to convert one pointer of another pointer of any type, no matter either the class is related to each other or not. It does not check if the pointer type and data pointed by the pointer is same or not.
+
+- const_cast converts between types that differ only in const and volatile qualifiers
+
+  
 
 
 These distinctions among the named casts allow the compiler to apply some minimal type checking and make it easier for a programmer to find the more dangerous conversions represented as reinterpret_casts. Some static_casts are portable, but few reinterpret_casts are. Hardly any guarantees are made for reinterpret_cast, but generally it produces a value of a new type that has the same bit pattern as its argument. If the target has at least as many bits as the original value, we can reinterpret_cast the result back to its original type and use it. The result of a reinterpret_cast is guaranteed to be usable only if its result is converted back to the exact original type. Note that reinterpret_cast is the kind of conversion that must be used for pointers to functions (§12.5). 
@@ -442,16 +445,6 @@ template<typename T>
 	};
 ```
 
-### Overloaded Operators
-例子：
-
-```c++
-inline bool operator==(Date a, Date b) // equality
-{
-	return a.day()==b.day() && a.month()==b.month() && a.year()==b.year();
-}
-```
-
 
 
 
@@ -474,19 +467,7 @@ Similar to friend functions, a friend class is a class whose members have access
 
 
 
-### 重载类型转换
-例子：
 
-```c++
-template <typename T, typename D = default_delete<T>>
-class unique_ptr {
-	public:
-	// ...
-	// does *this hold a pointer (that is not nullptr)?
-	explicit operator bool() const noexcept; 
-	// ...
-};
-```
 
 
 
@@ -651,13 +632,52 @@ Since no code is generated until a template is instantiated when required, compi
 
 
 
+### 虚函数和纯虚函数的区别
+定义一个函数为虚函数，不代表函数为不被实现的函数。
+定义他为虚函数是为了允许用基类的指针来调用子类的这个函数。
+定义一个函数为纯虚函数，才代表函数没有被实现。
+定义纯虚函数是为了实现一个接口，起到一个规范的作用，规范继承这个类的程序员必须实现这个函数。
+
+```c++
+class A
+{
+public:
+    virtual void foo()
+    {
+        cout<<"A::foo() is called"<<endl;
+    }
+};
+class B:public A
+{
+public:
+    void foo()
+    {
+        cout<<"B::foo() is called"<<endl;
+    }
+};
+int main(void)
+{
+    A *a = new B();
+    a->foo();   // 在这里，a虽然是指向A的指针，但是被调用的函数(foo)却是B的!
+    return 0;
+}
+
+　virtual void funtion1()=0 // 纯虚函数
+
+```
+
+
+
+
+
+
 
 
 
 
 ## Advices
 
-1. Don’t try to catch every exception in every function; Don’t try to catch every exception in every function;
+1. 构造器中抛出异常将保证new在堆上分配的内存被原子的释放
 2. Let a constructor establish an invariant, and throw if it cannot; Be sure that every resource acquired in a constructor is released when throwing an exception in that constructor;
 3. Minimize the use of try-blocks; 
 4. Prefer proper resource handles to the less structured finally;
@@ -665,7 +685,7 @@ Since no code is generated until a template is instantiated when required, compi
 6. If your function may not throw, declare it noexcept;
 7. Have main() catch and report all exceptions;
 8. Never let an exception escape from a destructor;
-9. Place ev ery nonlocal name, except main(), in some namespace;
+9. Place every nonlocal name, except main(), in some namespace;
 10. Don’t put a using-directive in a header file;
 11. Avoid non-inline function definitions in headers;
 12. Distinguish between average users’ interfaces and expert users’ interfaces
@@ -689,8 +709,8 @@ Since no code is generated until a template is instantiated when required, compi
 28. Use const iterators where you don’t need to modify the elements of a container;
 29. Don’t use iterators into a resized vector or deque;
 30. 0.7 is often a reasonable load factor of containers; 
-31.  Use unique_ptr  to represent exclusive ownership;
-32.  Use shared_ptr  to represent shared ownership;
+31. Use unique_ptr  to represent exclusive ownership;
+32. Use shared_ptr  to represent shared ownership;
 33. Minimize the use of weak_ptrs;
 
 
