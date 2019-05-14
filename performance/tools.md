@@ -1,12 +1,36 @@
 # 工具
 
-## A. CPU
-### A.1. mpstat
-#### A.1.1 What
+## 速查
+
+|           | CPU            | 中断     | 上下文切换                  | 内存                       | Swap   | 磁盘     | 网络     |      |      |
+| --------- | -------------- | -------- | --------------------------- | -------------------------- | ------ | -------- | -------- | ---- | ---- |
+| cachestat |                |          |                             | 全局Cache/buffer命中率     |        |          |          |      |      |
+| cachetop  |                |          |                             | 进程Cache/buffer命中率     |        |          |          |      |      |
+| dstat     | 全局util       | 全局次数 | 全局次数                    |                            | 换页数 | 读写带宽 | 读写带宽 |      |      |
+| memleak   |                |          |                             | 内存泄漏检测               |        |          |          |      |      |
+| mpstat    | 多核util       |          |                             |                            |        |          |          |      |      |
+| pcstat    |                |          |                             | 文件在cache/buffer中的情况 |        |          |          |      |      |
+| pidstat   | 各进程CPU Util |          | 进程voluntary/non voluntary |                            |        |          |          |      |      |
+| sar       |                |          |                             | 使用情况，cache/buffer     | 换页数 |          |          |      |      |
+| slabtop   |                |          |                             | slab使用情况               |        |          |          |      |      |
+| vmstat    |                | 全局次数 | 全局次数                    | 使用情况，cache/buffer     | 换页数 |          |          |      |      |
+|           |                |          |                             |                            |        |          |          |      |      |
+|           |                |          |                             |                            |        |          |          |      |      |
+|           |                |          |                             |                            |        |          |          |      |      |
+|           |                |          |                             |                            |        |          |          |      |      |
+|           |                |          |                             |                            |        |          |          |      |      |
+
+- Also see the big picture at the bottom of this doc.
+
+
+
+## mpstat
+
+### What
 mpstat 是一个常用的多核 CPU 性能分析工具，用来实时查看每个 CPU 的性能指标，以及
 所有 CPU 的平均指标。
 
-#### A.1.2常用 1line
+#### 常用 1line
 ```
 $mpstat 1
 # 间隔1秒连续输出
@@ -29,15 +53,15 @@ mpstat -P ALL 1
 
 
 
-## B. 进程
-### B.1. pidstat
-#### B.1.1 What
+## pidstat
+### What
 进程性能分析工具，用来实时查看进程的 CPU、内存、I/O 以及上下文切换等性能指标。
 
-#### B.1.2 重要参数
+### 重要参数
 * -t: 统计中包含进程所有的线程，不加此参数时，有时会只统计进程本身的统计量，包含的线程没有涵盖。
+* -w: 查看进程上下文切换情况
 
-#### B.1.3 常用 1line
+### 常用 1line
 
 ```
 pidstat -u 5 1  
@@ -73,6 +97,44 @@ sudo pidstat -d  -p <pid> 1
 03:37:18 PM  2916    120985      0.00      0.00      0.00  mysqld
 ```
 
+
+
+## vmstat
+
+monitoring tool that collects and displays summary information about operating system memory, processes, interrupts, paging and block I/O. 
+
+### 常用 1line
+
+```
+$vmstat 1
+procs -----------memory---------- ---swap-- -----io---- -system-- ------cpu-----
+ r  b   swpd   free   buff  cache   si   so    bi    bo   in   cs us sy id wa st
+ 1  1      0 97296848 152092 30043036    0    0     0    45    0    0  1  0 99  0  0
+ 1  0      0 97294224 152092 30045416    0    0     0     0 17031 31370  3  1 97  0  0
+ 1  0      0 97291744 152092 30047868    0    0     0   220 17019 31372  3  1 97  0  0
+```
+
+
+
+
+
+## /proc文件系统
+
+
+
+| /proc |             |                                   |      |      |      |      |      |      |      |
+| ----- | ----------- | --------------------------------- | ---- | ---- | ---- | ---- | ---- | ---- | ---- |
+|       | /cpuinfo    | 各个CPU的明细信息                 |      |      |      |      |      |      |      |
+|       | /interrupts | 各CPU上执行的各个中断(硬中断)次数 |      |      |      |      |      |      |      |
+|       | /softirqs   | 各CPU上执行的各个软中断次数       |      |      |      |      |      |      |      |
+|       |             |                                   |      |      |      |      |      |      |      |
+|       |             |                                   |      |      |      |      |      |      |      |
+|       |             |                                   |      |      |      |      |      |      |      |
+|       |             |                                   |      |      |      |      |      |      |      |
+|       |             |                                   |      |      |      |      |      |      |      |
+|       |             |                                   |      |      |      |      |      |      |      |
+|       |             |                                   |      |      |      |      |      |      |      |
+|       |             |                                   |      |      |      |      |      |      |      |
 
 
 
